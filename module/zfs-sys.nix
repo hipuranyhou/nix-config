@@ -1,10 +1,8 @@
-{ config, lib, ... }:
-
-# Based on:
 # https://github.com/notthebee/nix-config/blob/main/modules/zfs-root/default.nix
 # https://github.com/KornelJahn/nixos-disko-zfs-test/blob/main/hosts/testhost.nix
 # https://github.com/DerickEddington/nixos-config/blob/github/zfs/default.nix
 
+{ config, lib, ... }:
 let
   cfg = config.custom.zfsSys;
   inherit (builtins) hashString substring;
@@ -12,20 +10,14 @@ let
     mapAttrsToList mkAfter mkDefault mkEnableOption mkForce mkIf mkMerge
     mkOption strings types;
 in {
-
-  # TODO: Default persist files?
-  # TODO: diff_root script for finding permanent files.
-
   options.custom.zfsSys = {
-    # Required for function
     enable = mkEnableOption "ZFS system setup";
     diskId = mkOption {
       description = "Set identifier of the ZFS disk";
       type = types.str;
       example = "ata-VBOX_VB6ed77170";
     };
-    # TODO: Support at least mirrored drives for servers.
-    # Optional
+    # TODO: Default persist files list for impermanence module.
     immutable = mkOption {
       description = "Enable rollback of ZFS root during boot";
       type = types.bool;
@@ -83,29 +75,25 @@ in {
       };
     };
   };
-
   config = mkIf (cfg.enable) (mkMerge [
     # boot
     {
       boot = {
         kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
         loader = {
-          efi.canTouchEfiVariables = mkDefault true;
+          efi.canTouchEfiVariables = true;
           systemd-boot = {
             enable = mkDefault true;
             configurationLimit = 100;
             editor = false;
           };
         };
-        supportedFilesystems = {
-          btrfs = mkForce false;
-          zfs = true;
-        };
+        supportedFilesystems.zfs = true;
         tmp.cleanOnBoot = true;
         zfs = {
-          allowHibernation = false;
+          allowHibernation = mkForce false;
           devNodes = cfg.devNodes;
-          forceImportRoot = mkDefault false;
+          forceImportRoot = false;
         };
       };
       systemd.enableEmergencyMode = false;
@@ -116,6 +104,7 @@ in {
       '';
     })
     # filesystems
+    # TODO: diff_root script for finding permanent files.
     {
       fileSystems = mkMerge ([{
         "/boot" = {
@@ -149,7 +138,6 @@ in {
     }
     # networking
     {
-      # TODO: Add support for SSH unlock for servers.
       networking.hostId = mkDefault substring 0 8
         (hashString "sha256" config.networking.hostName);
       time.timeZone = mkDefault "Etc/UTC";
@@ -172,7 +160,6 @@ in {
             "rpool/persist".useTemplate = [ "default" ];
           };
         };
-        # TODO: Enable syncoid.
         zfs = {
           autoScrub.enable = true;
           autoSnapshot.enable = false;
@@ -181,7 +168,6 @@ in {
       };
       systemd.services.zfs-mount.enable = false;
     }
-    # TODO: Enable ZED notifications.
+    # TODO: Enable ZED notifications on desktop (mako?).
   ]);
-
 }

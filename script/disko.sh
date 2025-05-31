@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Based on:
 # https://github.com/KornelJahn/nixos-disko-zfs-test/blob/main/scripts/my-provision
 # https://github.com/nix-community/impermanence/blob/master/create-directories.bash
 
